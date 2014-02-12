@@ -9,7 +9,7 @@ import           Control.Lens        (view)
 import           Control.Monad
 import           Data.Aeson
 import           Data.ByteString     (ByteString)
---import Database.PostgreSQL.Simple
+import Database.PostgreSQL.Simple
 import           GHC.Generics
 import           Pipes
 import qualified Pipes.Aeson         as PAe
@@ -22,21 +22,26 @@ import           Pipes.Parse
 jsonLowerBound :: Int
 jsonLowerBound = 6
 
--- JSON PARSING
-data Event = Event {
-    tag     :: String
-    , _data :: Command
-} deriving Show
+token = "2b230e965c65eaf992962be7f0b0ab9b"
+serverUrl = "http://localhost:8080/event/" ++ token ++ "?tag=salt%2Fjob%2F"
 
-data Command = Command {
-    jid       :: String
+insertSQL = "insert into events (jid, user, stamp, tgt, minions, fun, arg) values (?, ?, ?, ?, ?, ?, ?)"
+
+-- JSON PARSING
+data Event = Event
+    { _tag     :: String
+    , _data :: Command
+    } deriving Show
+
+data Command = Command
+    { jid       :: String
     , user    :: String
     , _stamp  :: String
     , tgt     :: String
     , minions :: [String]
     , fun     :: String
     , arg     :: [Value]
-} deriving (Show, Generic)
+    } deriving (Show, Generic)
 
 instance FromJSON Command
 
@@ -67,7 +72,9 @@ processEvtStream = go . getLines
                 case jr of
                     Left  _    -> -- json parser returns an error
                         return ()
-                    Right jv -> yield jv
+                    Right jv -> do
+                        --execute conn insertSQL $ jv
+                        yield jv
                 -- p' :: Producer ByteString m (FreeT (Producer ByteString m) m r)
                 freeT' <- lift $ drain p'
                 go freeT'
@@ -76,7 +83,7 @@ processEvtStream = go . getLines
     drain p = runEffect $ for p discard
 
 main = do
-    req <- parseUrl "http://localhost:8080/event/2b230e965c65eaf992962be7f0b0ab9b?tag=salt%2Fjob%2F"
+    req <- parseUrl serverUrl
     withManager defaultManagerSettings $ \m ->
        withHTTP req m $ \resp ->
             runEffect $ for (processEvtStream (responseBody resp)) (liftIO.print)
