@@ -9,7 +9,10 @@ import           Control.Lens        (view)
 import           Control.Monad
 import           Data.Aeson
 import           Data.ByteString     (ByteString)
-import Database.PostgreSQL.Simple
+import qualified Database.PostgreSQL.Simple as Pg
+import Database.PostgreSQL.Simple.ToRow
+import Database.PostgreSQL.Simple.ToField (ToField(..))
+import Database.PostgreSQL.Simple.Types (PGArray(..))
 import           GHC.Generics
 import           Pipes
 import qualified Pipes.Aeson         as PAe
@@ -17,7 +20,7 @@ import qualified Pipes.ByteString    as PB
 import           Pipes.Group
 import           Pipes.HTTP
 import           Pipes.Parse
-
+import GHC.Int
 -- Removing "data: " by brute force for now
 jsonLowerBound :: Int
 jsonLowerBound = 6
@@ -51,6 +54,9 @@ instance FromJSON Event where
                             v .: "data"
      parseJSON _          = mzero
 
+instance Pg.ToRow Command where
+   toRow d = [toField (jid d), toField (user d), toField (_stamp d), toField (tgt d), toField $ PGArray (minions d), toField (fun d), toField $ PGArray (arg d)]
+
 -- lens getters are functions of Producers
 getLines::
     Monad m
@@ -58,8 +64,13 @@ getLines::
     -> FreeT (Producer ByteString m) m ()
 getLines = view PB.lines
 
-processEvtStream :: MonadIO m => Producer ByteString m () -> Producer Event m ()
-processEvtStream = go . getLines
+hello :: Pg.ToRow q => q -> IO (Int64)
+hello q = do
+   conn <- Pg.connect Pg.defaultConnectInfo
+   Pg.execute conn "insert into users (first_name) values (?)" q
+
+processEvtStream :: MonadIO m => Pg.Connection -> Producer ByteString m () -> Producer Event m ()
+processEvtStream conn = go . getLines
   where
     go :: MonadIO m => FreeT (Producer ByteString m) m r -> Producer Event m r
     go freeT = do
@@ -73,7 +84,8 @@ processEvtStream = go . getLines
                     Left  _    -> -- json parser returns an error
                         return ()
                     Right jv -> do
-                        --execute conn insertSQL $ jv
+                        let cmd = _data jv
+                        liftIO $ Pg.execute conn insertSQL $ cmd
                         yield jv
                 -- p' :: Producer ByteString m (FreeT (Producer ByteString m) m r)
                 freeT' <- lift $ drain p'
@@ -83,7 +95,8 @@ processEvtStream = go . getLines
     drain p = runEffect $ for p discard
 
 main = do
+    conn <- Pg.connect Pg.defaultConnectInfo { Pg.connectUser = "jules", Pg.connectDatabase = "jules" }
     req <- parseUrl serverUrl
     withManager defaultManagerSettings $ \m ->
        withHTTP req m $ \resp ->
-            runEffect $ for (processEvtStream (responseBody resp)) (liftIO.print)
+            runEffect $ for (processEvtStream conn (responseBody resp)) (liftIO.print)
