@@ -4,26 +4,26 @@
 module Main
 where
 
-import Data.Time.Format     (parseTime)
---import System.Locale        (defaultTimeLocale)
-import Data.Time.Clock      (UTCTime)
 import           Control.Applicative
-import           Control.Lens        (view)
+import           Control.Lens                       (view)
 import           Control.Monad
 import           Data.Aeson
-import           Data.ByteString     (ByteString)
-import qualified Database.PostgreSQL.Simple as Pg
-import Database.PostgreSQL.Simple.ToRow
-import Database.PostgreSQL.Simple.ToField (ToField(..))
-import Database.PostgreSQL.Simple.Types (PGArray(..))
+import           Data.ByteString                    (ByteString)
+import           Data.Time.Clock                    (UTCTime)
+import           Data.Time.Format                   (parseTime)
+import qualified Database.PostgreSQL.Simple         as Pg
+import           Database.PostgreSQL.Simple.ToField (ToField (..), toJSONField)
+import           Database.PostgreSQL.Simple.ToRow
+import           Database.PostgreSQL.Simple.Types   (PGArray (..))
 import           GHC.Generics
 import           Pipes
-import qualified Pipes.Aeson         as PAe
-import qualified Pipes.ByteString    as PB
+import qualified Pipes.Aeson                        as PAe
+import qualified Pipes.ByteString                   as PB
 import           Pipes.Group
 import           Pipes.HTTP
 import           Pipes.Parse
-import System.Locale
+import           System.Locale
+
 -- Removing "data: " by brute force for now
 jsonLowerBound :: Int
 jsonLowerBound = 6
@@ -39,19 +39,19 @@ insertSQL = "insert into event (jid, username, stamp, tgt, minions, fun, arg) va
 
 -- JSON PARSING
 data Event = Event
-    { _tag     :: String
+    { _tag  :: String
     , _data :: Command
     } deriving Show
 
 data Command = Command
 
-    { jid       :: String
-    , userName  :: String
-    , _stamp  :: Maybe UTCTime
-    , tgt     :: String
-    , minions :: [String]
-    , fun     :: String
-    , arg     :: [Value]
+    { jid      :: String
+    , userName :: String
+    , _stamp   :: Maybe UTCTime
+    , tgt      :: String
+    , minions  :: [String]
+    , fun      :: String
+    , arg      :: [Value]
     } deriving (Show, Generic)
 
 --instance FromJSON Command
@@ -80,7 +80,7 @@ instance Pg.ToRow Command where
              , toField (tgt d)
              , toField $ PGArray (minions d)
              , toField (fun d)
-             , toField $ PGArray (fmap toJSON (arg d))
+             , toJSONField (arg d)
              ]
 
 -- lens getters are functions of Producers
@@ -108,7 +108,7 @@ processEvtStream conn = go . getLines
                     Right jv -> do
                         let cmd = _data jv
                         liftIO $ print cmd
-                        liftIO $ Pg.execute conn insertSQL $ cmd
+                        liftIO $ Pg.execute conn insertSQL cmd
                         yield jv
                 -- p' :: Producer ByteString m (FreeT (Producer ByteString m) m r)
                 freeT' <- lift $ drain p'
