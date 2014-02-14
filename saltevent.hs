@@ -9,6 +9,7 @@ import           Control.Lens                       (view)
 import           Control.Monad
 import           Data.Aeson
 import           Data.ByteString                    (ByteString)
+import           Data.Text
 import           Data.Time.Clock                    (UTCTime)
 import           Data.Time.Format                   (parseTime)
 import qualified Database.PostgreSQL.Simple         as Pg
@@ -39,18 +40,18 @@ insertSQL = "insert into event (jid, username, stamp, tgt, minions, fun, arg) va
 
 -- JSON PARSING
 data Event = Event
-    { _tag  :: String
+    { _tag  :: Text
     , _data :: Command
     } deriving Show
 
 data Command = Command
 
-    { jid      :: String
-    , userName :: String
+    { jid      :: Text
+    , userName :: Text
     , _stamp   :: Maybe UTCTime
-    , tgt      :: String
-    , minions  :: [String]
-    , fun      :: String
+    , tgt      :: Text
+    , minions  :: [Text]
+    , fun      :: Text
     , arg      :: [Value]
     } deriving (Show, Generic)
 
@@ -102,8 +103,7 @@ processEvtStream conn = go . getLines
             Free p -> do
                 (jr, p') <- lift $ runStateT PAe.decode (p >-> PB.drop jsonLowerBound)
                 case jr of
-                    Left e    -> do -- json parser returns an error
-                        liftIO $ print e
+                    Left _  -> -- json parser returns an error
                         return ()
                     Right jv -> do
                         let cmd = _data jv
