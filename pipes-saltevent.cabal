@@ -33,11 +33,13 @@ executable saltevent
                   bytestring,
                   connection        >= 0.1 && < 0.2,
                   lens              >= 4.0 && < 4.1,
+                  old-locale        >= 1,
                   pipes             >= 4.1 && < 4.2,
                   pipes-aeson       >= 0.2  && < 0.4,
                   pipes-http        >= 1.0 && < 1.1,
                   pipes-group       >= 1.0 && < 1.1,
                   pipes-parse       >= 3.0 && < 3.1,
                   pipes-bytestring  >=2.0  && < 2.1,
-                  postgresql-simple >= 0.4
+                  postgresql-simple >= 0.4,
+                  time >= 1.4
   ghc-options:     -Wall -fno-warn-unused-do-bind -fno-warn-missing-signatures
