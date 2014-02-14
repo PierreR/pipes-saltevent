@@ -9,7 +9,8 @@ Database
 * (as postgres) initdb
 * (as postgres) create user --interactive
 * (as postgres) createdb -O jules jules
-* () CREATE TABLE event (
+* (as jules) psql -d jules -U jules
+	CREATE TABLE event (
 		bigserial primary key,
         jid  text NOT NULL,
         username text NOT NULL,
@@ -17,4 +18,4 @@ Database
         tgt   text NOT NULL,
      	minions text[],
      	fun     text NOT NULL,
-    	arg     integer[])
+    	arg     text[])
