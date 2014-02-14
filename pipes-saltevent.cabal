@@ -7,26 +7,17 @@ Author: Pierre Radermecker
 Maintainer: PierreR@pi3r.com
 Bug-Reports: https://github.com/PierreR/pipes-saltevent
 Tested-With: GHC == 7.6.3
-Synopsis: Pipes event from an http flow
+Synopsis: Pipes event from an http flow of salt events (from Bottle)
 Description:
 Category: Pipes
 Source-Repository head
     Type: git
     Location: https://github.com/PierreR/pipes-saltevent
 
-Library
-    default-language: Haskell2010
-    Build-Depends:
-        base             >= 4.3     && < 5,
-        binary,
-        bytestring       >= 0.10    && < 0.11,
-        pipes            >= 4.1     && < 4.2,
-        postgresql-simple  >= 0.4
-    GHC-Options: -O2 -fno-warn-missing-signatures
-
 executable saltevent
   default-language: Haskell2010
-  main-is:  saltevent.hs
+  hs-source-dirs: src
+  main-is:  main.hs
   build-depends:  aeson             >= 0.7  && < 0.8,
                   async             >= 2    && < 3,
                   base              >= 4    && < 5,

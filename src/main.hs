@@ -1,29 +1,18 @@
-{-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings         #-}
 module Main
 where
 
-import           Control.Applicative
+import SaltEvent
 import           Control.Lens                       (view)
-import           Control.Monad
-import           Data.Aeson
 import           Data.ByteString                    (ByteString)
-import           Data.Text
-import           Data.Time.Clock                    (UTCTime)
-import           Data.Time.Format                   (parseTime)
 import qualified Database.PostgreSQL.Simple         as Pg
-import           Database.PostgreSQL.Simple.ToField (ToField (..), toJSONField)
-import           Database.PostgreSQL.Simple.ToRow
-import           Database.PostgreSQL.Simple.Types   (PGArray (..))
-import           GHC.Generics
 import           Pipes
 import qualified Pipes.Aeson                        as PAe
 import qualified Pipes.ByteString                   as PB
 import           Pipes.Group
 import           Pipes.HTTP
 import           Pipes.Parse
-import           System.Locale
 
 -- Removing "data: " by brute force for now
 jsonLowerBound :: Int
@@ -31,58 +20,8 @@ jsonLowerBound = 6
 
 token = "edf5e44d8c12852af87d62423c21bf7f"
 serverUrl = "http://localhost:8080/event/" ++ token ++ "?tag=salt%2Fjob%2F"
-stampFormat = "%Y-%m-%d_%T%Q"
-
-parseStampTime :: String -> Maybe UTCTime
-parseStampTime = parseTime defaultTimeLocale stampFormat
 
 insertSQL = "insert into event (jid, username, stamp, tgt, minions, fun, arg) values (?, ?, ?, ?, ?, ?, ?)"
-
--- JSON PARSING
-data Event = Event
-    { _tag  :: Text
-    , _data :: Command
-    } deriving Show
-
-data Command = Command
-
-    { jid      :: Text
-    , userName :: Text
-    , _stamp   :: Maybe UTCTime
-    , tgt      :: Text
-    , minions  :: [Text]
-    , fun      :: Text
-    , arg      :: [Value]
-    } deriving (Show, Generic)
-
---instance FromJSON Command
-
-instance FromJSON Event where
-     parseJSON (Object v) = Event <$>
-                            v .: "tag" <*>
-                            v .: "data"
-     parseJSON _          = mzero
-
-instance FromJSON Command where
-     parseJSON (Object v) = Command <$>
-                            v .: "jid" <*>
-                            v .: "user" <*>
-                            liftM parseStampTime (v .: "_stamp") <*>
-                            v .:  "tgt" <*>
-                            v .: "minions" <*>
-                            v .:  "fun" <*>
-                            v .: "arg"
-     parseJSON _          = mzero
-
-instance Pg.ToRow Command where
-   toRow d = [toField (jid d)
-             , toField (userName d)
-             , toField (_stamp d)
-             , toField (tgt d)
-             , toField $ PGArray (minions d)
-             , toField (fun d)
-             , toJSONField (arg d)
-             ]
 
 -- lens getters are functions of Producers
 getLines::
@@ -91,10 +30,10 @@ getLines::
     -> FreeT (Producer ByteString m) m ()
 getLines = view PB.lines
 
-processEvtStream :: MonadIO m => Pg.Connection -> Producer ByteString m () -> Producer Event m ()
+processEvtStream :: MonadIO m => Pg.Connection -> Producer ByteString m () -> Producer SaltEvent m ()
 processEvtStream conn = go . getLines
   where
-    go :: MonadIO m => FreeT (Producer ByteString m) m r -> Producer Event m r
+    go :: MonadIO m => FreeT (Producer ByteString m) m r -> Producer SaltEvent m r
     go freeT = do
         x <- lift $ runFreeT freeT -- runFreeT to get the next line (the next Producer inside the FreeT)
         case x of
