@@ -11,11 +11,11 @@ Database
 * (as postgres) createdb -O jules jules
 * (as jules) psql -d jules -U jules
 	CREATE TABLE event (
-		bigserial primary key,
+		id   bigserial primary key,
         jid  text NOT NULL,
         username text NOT NULL,
         stamp timestamptz NOT NULL,
         tgt   text NOT NULL,
      	minions text[],
      	fun     text NOT NULL,
-    	arg     text[])
+    	arg     text)
