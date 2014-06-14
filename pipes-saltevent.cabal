@@ -25,7 +25,7 @@ executable saltevent
                   lens              >= 4.1  && < 4.2,
                   old-locale        >= 1.0  && < 2.0,
                   pipes             >= 4.1  && < 4.2,
-                  pipes-aeson       >= 0.3  && < 0.5,
+                  pipes-aeson       >= 0.4  && < 0.5,
                   pipes-http        >= 1.0  && < 1.1,
                   pipes-group       >= 1.0  && < 1.1,
                   pipes-parse       >= 3.0  && < 3.1,
