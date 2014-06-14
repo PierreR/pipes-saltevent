@@ -20,7 +20,7 @@ stampFormat = "%Y-%m-%d_%T%Q"
 
 parseStampTime :: String -> Maybe UTCTime
 parseStampTime = parseTime defaultTimeLocale stampFormat
-
+                 
 -- JSON PARSING
 data SaltEvent = Event
     { _tag  :: Text

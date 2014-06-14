@@ -42,13 +42,12 @@ processEvtStream conn = go . getLines
             Free p -> do
                 (jr, p') <- lift $ runStateT PAe.decode (p >-> PB.drop jsonLowerBound)
                 case jr of
-                    Left _  -> -- json parser returns an error
-                        return ()
-                    Right jv -> do
+                    Just(Right jv) -> do
                         let cmd = _data jv
                         liftIO $ print cmd
                         liftIO $ Pg.execute conn insertSQL cmd
                         yield jv
+                    _  -> return () -- json parser returns an error
                 -- p' :: Producer ByteString m (FreeT (Producer ByteString m) m r)
                 freeT' <- lift $ drain p'
                 go freeT'
